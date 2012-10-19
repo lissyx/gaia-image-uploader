@@ -1,0 +1,350 @@
+diff --git a/test_apps/image-uploader/index.html b/test_apps/image-uploader/index.html
+index 20867c5..625fd3d 100644
+--- a/test_apps/image-uploader/index.html
++++ b/test_apps/image-uploader/index.html
+@@ -35,45 +35,9 @@
+     <section role=region" id="services">
+       <div class="bb-docs">
+         <h2 class="bb-docs">Services</h2>
+-        <ul data-state="edit">
+-          <li>
+-            <img src="style/images/canardpc.jpg">
+-            <label class="check">
+-              <input type="checkbox" name="canardpc" id="upload-canardpc" />
+-              <span></span>
+-            </label>
+-            <dl>
+-              <dt>CanardPC</dt>
+-              <dd><span>anonymous</span></dd>
+-            </dl>
+-          </li>
+-          <li>
+-            <img src="style/images/twitter-bird-light-bgs.png">
+-            <label class="check">
+-              <input type="checkbox" name="twitter" id="upload-twitter" />
+-              <span></span>
+-            </label>
+-            <dl>
+-              <dt>Twitter</dt>
+-              <dd><span>auth</span></dd>
+-            </dl>
+-          </li>
+-          <li>
+-            <img src="style/images/imgur-iphone.png">
+-            <label class="check">
+-              <input type="checkbox" name="imgur" id="upload-imgur" />
+-              <span></span>
+-            </label>
+-            <dl>
+-              <dt>Imgur</dt>
+-              <dd><span>anonymous</span></dd>
+-            </dl>
+-          </li>
++        <ul data-state="edit" id="services-container">
+         </ul>
+-        <div class="bb-docs" id="twitter-content">
+-          <label id="label-twitter-message" for="twitter-message">Your Tweet:</label>
+-          <textarea id="twitter-message" class="message" rows="3" cols="50" maxlength="140"></textarea>
+-          <p id="credentials-status"></p>
++        <div class="bb-docs" id="service-content">
+         </div>
+         <div class="bb-docs">
+           <button id="share">Share</button>
+diff --git a/test_apps/image-uploader/js/image-uploader.js b/test_apps/image-uploader/js/image-uploader.js
+index a7bfeb2..aa3a96a 100644
+--- a/test_apps/image-uploader/js/image-uploader.js
++++ b/test_apps/image-uploader/js/image-uploader.js
+@@ -1,49 +1,108 @@
+ var files = undefined;
+ var creds = undefined;
+ var creds_twitter = new CredentialsDB('twitter');
+-creds_twitter.onready = updateTwitterCredentials;
++// creds_twitter.onready = updateTwitterCredentials;
++
++var CanardPC = {
++  service: 'canardpc',
++  name: 'CanardPC',
++  auth: 'anonymous',
++  image: 'style/images/canardpc.jpg',
++  apiroot: 'http://tof.canardpc.com/',
++  upload: function(callback) {
++    var picture = new FormData();
++    picture.append('email', '');
++    picture.append('envoyer', 'envoyer');
++    picture.append('fichier', source);
++  
++    services.xhrupload(apiroot, picture, function(xhr) {
++      if (xhr.responseText.match(url + 'show/')) {
++        var re = new RegExp(url + 'show/(.*).html');
++        var ar = re.exec(xhr.responseText);
++        var pid = ar[1];
++        var up = ar[0];
++        setStatus('Uploaded successfully: ' + pid);
++        callback(up);
++      } else {
++        setStatus('Error while uploading!');
++      }
++    });
++  }
++};
+ 
+-window.onload = function() {
+-  clean();
+-  setup();
+-  navigator.mozSetMessageHandler('activity', function(activityRequest) {
+-    if (activityRequest.source.name === 'share-filenames') {
+-      addImages(activityRequest.source.data.filenames);
+-    }
+-  });
++var Twitter = {
++  service: 'twitter',
++  name: 'Twitter',
++  auth: 'oauth1',
++  image: 'style/images/twitter-bird-light-bgs.png',
++  oauth1: {
++    token: null,
++    tokenSecret: null,
++    consumerKey: 'wNJ9YztlCeboNx8cyfHliA',
++    consumerSecret: 'LH9tN8IbhRINsCRJlAQqNM479fGp6SDtNfxoKZKLBFA'
++  },
++  credentials: new CredentialsDB('twitter'),
++  buildContent: function() {
++    var container = document.getElementById('service-content');
++    var label = document.createElement('label');
++    var textarea = document.createElement('textarea');
++    var p = document.createElement('p');
++
++    label.id = 'label-twitter-message';
++    label.for = 'twitter-message';
++    label.innerHTML = 'Your Tweet:';
++
++    textarea.id = 'twitter-message';
++    textarea.className = 'message';
++    textarea.rows = '3';
++    textarea.cols = '50';
++    textarea.maxlength = '140';
++    textarea.addEventListener('focus', hideBannerStatus, false);
++
++    p.id = 'credentials-status';
++
++    container.appendChild(label);
++    container.appendChild(textarea);
++    container.appendChild(p);
++  }
+ };
+ 
+-function setup() {
+-  document.getElementById('share')
+-    .addEventListener('click', share, false);
+-  document.getElementById('upload-canardpc')
+-    .addEventListener('click', enableOnly, false);
+-  document.getElementById('upload-twitter')
+-    .addEventListener('click', enableOnly, false);
+-  document.getElementById('upload-imgur')
+-    .addEventListener('click', enableOnly, false);
+-  document.getElementById('twitter-message')
+-    .addEventListener('focus', hideBannerStatus, false);
++var Imgur = {
++  service: 'imgur',
++  name: 'Imgur',
++  auth: 'anonymous',
++  image: 'style/images/imgur-iphone.png',
++  apikey: '4fa922afa12ef6b38c0b5b5e6e548a4f',
++  apiroot: 'http://api.imgur.com/2/upload.json',
++  upload: function(callback) {
++    var picture = new FormData();
++    picture.append('key', apikey);
++    picture.append('image', source);
++  
++    services.xhrupload(apiroot, picture, function(xhr) {
++      var json = JSON.parse(xhr.responseText);
++      var link = json.upload.links.imgur_page;
++      var img = json.upload.image.hash;
++      if (link == undefined) {
++        setStatus('Error while uploading!');
++      } else {
++        setStatus('Uploaded successfully: ' + img);
++        callback(link);
++      }
++    });
++  }
++};
++
++function UploadServices() {
++  this.services = {};
+ }
+ 
+-function enableOnly(evt) {
+-  var toKeep = evt.target.id;
+-  var services =
+-    document
+-    .getElementById('services')
+-    .getElementsByTagName('input');
+-  for (var service in services) {
+-    var s = services[service];
+-    if (s.type === 'checkbox' && s.id != toKeep) {
+-      s.checked = false;
+-    }
+-    if (s.id == 'upload-twitter') {
+-      switchTwitter();
+-    }
+-  }
++UploadServices.prototype.register = function(service) {
++  this.services[service.service] = service;
++  this.createServiceEntry(service.service);
+ }
+ 
+-function XHRUpload(url, data, callback) {
++UploadServices.prototype.xhrupload = function(url, data, callback) {
+   setStatus('Ready to upload');
+   var xhr = new XMLHttpRequest({mozSystem: true});
+   xhr.open('POST', url, true);
+@@ -66,40 +125,94 @@ function XHRUpload(url, data, callback) {
+   setStatus('Uploading ...');
+ }
+ 
+-function uploadCanardPc(source, callback) {
+-  var url = 'http://tof.canardpc.com/';
++UploadServices.prototype.createServiceEntry = function(service) {
++  var serv = this.services[service];
++  if (serv == undefined) {
++    console.log('Unable to find service "' + service + '"');
++    return;
++  }
+ 
+-  var picture = new FormData();
+-  picture.append('email', '');
+-  picture.append('envoyer', 'envoyer');
+-  picture.append('fichier', source);
++  var container = document.getElementById('services-container');
++  if (container == undefined) {
++    console.log('Unable to find services container');
++    return;
++  }
+ 
+-  XHRUpload(url, picture, function(xhr) {
+-    if (xhr.responseText.match(url + 'show/')) {
+-      var re = new RegExp(url + 'show/(.*).html');
+-      var ar = re.exec(xhr.responseText);
+-      var pid = ar[1];
+-      var up = ar[0];
+-      setStatus('Uploaded successfully: ' + pid);
+-      callback(up);
+-    } else {
+-      setStatus('Error while uploading!');
+-    }
+-  });
++  var li = document.createElement('li');
++  var img = document.createElement('img');
++  img.src = serv.image;
++  var label = document.createElement('label');
++  label.className = 'check';
++  var input = document.createElement('input');
++  input.type = 'checkbox';
++  input.name = serv.service;
++  input.id = 'upload-' + serv.service;
++  input.addEventListener('click', this.enableOnly, false);
++  var span = document.createElement('span');
++  var dl = document.createElement('dl');
++  var dt = document.createElement('dt');
++  dt.innerHTML = serv.name;
++  var dd = document.createElement('dd');
++  var span_auth = document.createElement('span');
++  span_auth.innerHTML = serv.auth === 'anonymous' ? 'Anonymous' : 'Authenticated';
++
++  label.appendChild(input);
++  label.appendChild(span);
++  dd.appendChild(span_auth);
++  dl.appendChild(dt);
++  dl.appendChild(dd);
++  li.appendChild(img);
++  li.appendChild(label);
++  li.appendChild(dl);
++
++  container.appendChild(li);
+ }
+ 
+-function switchTwitter() {
+-  var twenabled = document.getElementById('upload-twitter');
+-  var twcontent = document.getElementById('twitter-content');
+-  if (twcontent) {
+-    if (twenabled.checked) {
+-      twcontent.style.display = 'block';
+-    } else {
+-      twcontent.style.display = 'none';
++UploadServices.prototype.enableOnly = function(evt) {
++  var toKeep = evt.target.id;
++  var services =
++    document
++    .getElementById('services')
++    .getElementsByTagName('input');
++  for (var service in services) {
++    var s = services[service];
++    if (s.type === 'checkbox' && s.id != toKeep) {
++      s.checked = false;
++    }
++    var svc = this.services[s.id];
++    if (svc.buildContent != undefined && svc.contentBuilt != true) {
++      svc.buildContent();
++      svc.contentBuilt = true;
+     }
+   }
+ }
+ 
++UploadServices.prototype.clean = function() {
++
++}
++
++UploadServices.prototype.setup = function() {
++  document.getElementById('share')
++    .addEventListener('click', share, false);
++}
++
++var services = new UploadServices();
++
++window.onload = function() {
++  services.clean();
++  services.setup();
++
++  services.register(CanardPC);
++  services.register(Twitter);
++  services.register(Imgur);
++
++  navigator.mozSetMessageHandler('activity', function(activityRequest) {
++    if (activityRequest.source.name === 'share-filenames') {
++      addImages(activityRequest.source.data.filenames);
++    }
++  });
++};
++
+ function updateTwitterCredentials() {
+   purge('credentials-status');
+   var container = document.getElementById('credentials-status');
+@@ -320,27 +433,6 @@ function uploadTwitter(source, callback) {
+   });
+ }
+ 
+-function uploadImgur(source, callback) {
+-  var apikey = '4fa922afa12ef6b38c0b5b5e6e548a4f';
+-  var url = 'http://api.imgur.com/2/upload.json';
+-
+-  var picture = new FormData();
+-  picture.append('key', apikey);
+-  picture.append('image', source);
+-
+-  XHRUpload(url, picture, function(xhr) {
+-    var json = JSON.parse(xhr.responseText);
+-    var link = json.upload.links.imgur_page;
+-    var img = json.upload.image.hash;
+-    if (link == undefined) {
+-      setStatus('Error while uploading!');
+-    } else {
+-      setStatus('Uploaded successfully: ' + img);
+-      callback(link);
+-    }
+-  });
+-}
+-
+ function finalize(url) {
+   clean();
+   new MozActivity({
