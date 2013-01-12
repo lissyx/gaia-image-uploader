@@ -1,9 +1,14 @@
 {
   "name": "Image Uploader",
   "description": "Uploading an image to some website",
+  "type": "certified",
   "developer": {
     "name": "lissyx",
-    "url": "https://lissyx.github.com/gaia-image-uploader"
+    "url": "https://github.com/lissyx/gaia/tree/image-uploader"
+  },
+  "permissions": {
+    "systemXHR":{},
+    "device-storage:pictures":{ "access": "readonly" }
   },
   "activities": {
     "share": {
@@ -11,6 +16,7 @@
         "type": "image/*"
        },
       "href": "/index.html",
+      "returnValue": true,
       "disposition": "window"
     }
   },
