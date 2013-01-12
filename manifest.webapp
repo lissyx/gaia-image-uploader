@@ -7,8 +7,8 @@
     "url": "https://github.com/lissyx/gaia/tree/image-uploader"
   },
   "permissions": {
-    "systemXHR":{},
-    "device-storage:pictures":{ "access": "readonly" }
+    "systemXHR":{ "description": "Needed to be able to perform upload."},
+    "device-storage:pictures":{ "access": "readonly", "description": "Needed to be able to read pictures." }
   },
   "activities": {
     "share": {
