@@ -1,6 +1,8 @@
 {
   "name": "Image Uploader",
   "description": "Uploading an image to some website",
+  "type": "privileged",
+  "role": "system",
   "developer": {
     "name": "lissyx",
     "url": "https://github.com/lissyx/gaia/tree/image-uploader"
